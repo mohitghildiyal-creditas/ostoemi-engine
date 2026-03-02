@@ -234,7 +234,52 @@ export default function App() {
   const [showMenu, setShowMenu] = useState(false);
   const [liveBookings, setLiveBookings] = useState(1120);
   const [liveDelivered, setLiveDelivered] = useState(98400);
+  const [showEngineModal, setShowEngineModal] = useState(false);
+  const [engineStep, setEngineStep] = useState(0); // 0=idle,1=running,2=done
+  const [engineLog, setEngineLog] = useState([]);
+  const [engineResult, setEngineResult] = useState(null);
   const TODAY = new Date().toLocaleDateString("en-IN", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+
+  const runEngine = () => {
+    setShowEngineModal(true);
+    setEngineStep(1);
+    setEngineLog([]);
+    setEngineResult(null);
+
+    const steps = [
+      { delay: 400,  msg: "🔄 Loading past delivery data (last 30 days)..." },
+      { delay: 900,  msg: "📊 Refreshing propensity-to-pay scores for 5,00,000 accounts..." },
+      { delay: 1600, msg: "✅ Propensity refresh complete — avg score: 0.61 (+4.2% vs yesterday)" },
+      { delay: 2200, msg: "🧠 ML Agent 1: Re-scoring segments using updated signals..." },
+      { delay: 2900, msg: "📬 ML Agent 2: Selecting optimal channel per account (RCS / WhatsApp / SMS / Email)..." },
+      { delay: 3600, msg: "✍️  ML Agent 3: Assigning best-performing template per segment..." },
+      { delay: 4300, msg: "⏰ Optimising send-time windows based on past open rates..." },
+      { delay: 4900, msg: "🚫 Suppressing 18,420 DND / recently contacted accounts..." },
+      { delay: 5500, msg: "✅ Engine run complete. Dispatching today's plan..." },
+    ];
+
+    steps.forEach(({ delay, msg }) => {
+      setTimeout(() => setEngineLog(prev => [...prev, msg]), delay);
+    });
+
+    setTimeout(() => {
+      setEngineStep(2);
+      setEngineResult({
+        totalAccounts: 481580,
+        suppressed: 18420,
+        segments: [
+          { seg: "HP",   label: "High Propensity",    accounts: 78200,  propensity: 0.71, channel: "RCS",       template: "Personalised EMI Amount",    expectedCVR: 2.1  },
+          { seg: "LBCL", label: "Below Credit Limit", accounts: 11400,  propensity: 0.78, channel: "WhatsApp",  template: "Credit Limit Restore Offer", expectedCVR: 12.4 },
+          { seg: "LP",   label: "Low Propensity",     accounts: 274000, propensity: 0.48, channel: "SMS",       template: "Generic EMI Offer",          expectedCVR: 1.0  },
+          { seg: "NV",   label: "New Vintage",        accounts: 46800,  propensity: 0.63, channel: "Email",     template: "Welcome + EMI Intro",        expectedCVR: 2.7  },
+          { seg: "PB",   label: "Previously Booked",  accounts: 71180,  propensity: 0.74, channel: "WhatsApp",  template: "Re-engagement with History",  expectedCVR: 7.8  },
+        ],
+        totalExpectedBookings: 8240,
+        projectedAmount: "3.24 Cr",
+        costSaved: "₹12,400 vs yesterday",
+      });
+    }, 5800);
+  };
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -331,7 +376,7 @@ export default function App() {
                 <h2 style={{ fontSize: 21, fontWeight: 800, margin: 0, color: tp }}>Campaign Intelligence Dashboard</h2>
                 <p style={{ fontSize: 13, color: ts, margin: "3px 0 0" }}>AI-powered daily decisions for 5 Lakh OSTOEMI accounts</p>
               </div>
-              <button style={{ display: "flex", alignItems: "center", gap: 7, background: C.primary, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+              <button onClick={runEngine} style={{ display: "flex", alignItems: "center", gap: 7, background: C.primary, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
                 <Icon n="play" s={14} c="#fff" /> Run Today's Engine
               </button>
             </div>
@@ -943,6 +988,114 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* ═══════════════ ENGINE RUN MODAL ═══════════════ */}
+      {showEngineModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: card, borderRadius: 16, width: "min(820px, 95vw)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", padding: 28 }}>
+
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ background: "linear-gradient(135deg,#2563EB,#7C3AED)", borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon n="brain" s={18} c="#fff" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: tp }}>ML Engine Run</div>
+                  <div style={{ fontSize: 12, color: ts }}>AI-powered daily decision pipeline</div>
+                </div>
+              </div>
+              <button onClick={() => { setShowEngineModal(false); setEngineStep(0); setEngineLog([]); setEngineResult(null); }}
+                style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 20, color: ts, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Log Output */}
+            <div style={{ background: dark ? "#0D0D0C" : "#0F172A", borderRadius: 10, padding: "14px 16px", marginBottom: 20, fontFamily: "monospace", fontSize: 12, minHeight: 160 }}>
+              {engineLog.map((line, i) => (
+                <div key={i} style={{ color: "#A3E635", marginBottom: 5, animation: "fadeIn 0.3s ease" }}>{line}</div>
+              ))}
+              {engineStep === 1 && (
+                <span style={{ color: "#60A5FA", animation: "pulse 1s infinite" }}>▌</span>
+              )}
+            </div>
+
+            {/* Results */}
+            {engineStep === 2 && engineResult && (
+              <div style={{ animation: "fadeIn 0.4s ease" }}>
+                {/* Summary Row */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 18 }}>
+                  {[
+                    { label: "Accounts Targeted", value: (engineResult.totalAccounts).toLocaleString("en-IN"), color: C.primary },
+                    { label: "Suppressed (DND)", value: engineResult.suppressed.toLocaleString("en-IN"), color: C.error },
+                    { label: "Expected Bookings", value: engineResult.totalExpectedBookings.toLocaleString("en-IN"), color: C.success },
+                    { label: "Projected Amount", value: "₹" + engineResult.projectedAmount, color: C.warning },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ background: sf, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color }}>{value}</div>
+                      <div style={{ fontSize: 11, color: ts, marginTop: 3 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Per-Segment Table */}
+                <div style={{ fontWeight: 700, fontSize: 13, color: tp, marginBottom: 10 }}>Segment-wise Decisions</div>
+                <div style={{ borderRadius: 10, border: `1px solid ${br}`, overflow: "hidden", marginBottom: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: sf }}>
+                        {["Segment", "Accounts", "Propensity", "Best Channel", "Template", "Exp. CVR"].map(h => (
+                          <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: ts, fontWeight: 600, borderBottom: `1px solid ${br}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {engineResult.segments.map((s, i) => (
+                        <tr key={s.seg} style={{ borderBottom: i < engineResult.segments.length - 1 ? `1px solid ${br}` : "none" }}
+                          onMouseEnter={e => e.currentTarget.style.background = sf}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                          <td style={{ padding: "9px 12px" }}>
+                            <span style={{ background: s.propensity > 0.7 ? C.successLight : s.propensity > 0.55 ? C.warningLight : C.errorLight, color: s.propensity > 0.7 ? C.success : s.propensity > 0.55 ? C.warning : C.error, borderRadius: 6, padding: "2px 8px", fontWeight: 700, fontSize: 11 }}>{s.seg}</span>
+                            <span style={{ marginLeft: 8, color: ts }}>{s.label}</span>
+                          </td>
+                          <td style={{ padding: "9px 12px", fontWeight: 600, color: tp }}>{s.accounts.toLocaleString("en-IN")}</td>
+                          <td style={{ padding: "9px 12px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div style={{ width: 50, height: 6, background: br, borderRadius: 3 }}>
+                                <div style={{ width: `${s.propensity * 100}%`, height: "100%", background: s.propensity > 0.7 ? C.success : s.propensity > 0.55 ? C.warning : C.error, borderRadius: 3 }} />
+                              </div>
+                              <span style={{ color: tp, fontWeight: 600 }}>{(s.propensity * 100).toFixed(0)}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "9px 12px" }}>
+                            <span style={{ background: C.purpleLight, color: C.purple, borderRadius: 6, padding: "2px 8px", fontWeight: 600, fontSize: 11 }}>{s.channel}</span>
+                          </td>
+                          <td style={{ padding: "9px 12px", color: ts, maxWidth: 180 }}>{s.template}</td>
+                          <td style={{ padding: "9px 12px", fontWeight: 700, color: C.success }}>{s.expectedCVR}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: ts }}>💰 Cost saved: <strong style={{ color: C.success }}>{engineResult.costSaved}</strong></div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => { setShowEngineModal(false); setEngineStep(0); setEngineLog([]); setEngineResult(null); }}
+                      style={{ padding: "9px 18px", borderRadius: 9, border: `1px solid ${br}`, background: "transparent", color: tp, cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+                      Close
+                    </button>
+                    <button onClick={runEngine}
+                      style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: C.primary, color: "#fff", cursor: "pointer", fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Icon n="refresh" s={13} c="#fff" /> Re-run Engine
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
